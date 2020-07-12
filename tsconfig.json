@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "outDir": "./lib",
+    "rootDir": "./src",
+    "strict": true,
+    "declaration": true /* Generates corresponding '.d.ts' file. */,
+    "sourceMap": true,
+    "esModuleInterop": true
+  },
+  "exclude": ["test"]
+}
