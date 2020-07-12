@@ -1,6 +1,7 @@
-import { Hook, HookContext } from '@feathersjs/feathers';
+import { HookContext } from '@feathersjs/feathers';
 import { lookupRefreshToken, loadConfig } from './common';
 import Debug from 'debug';
+import { Application } from '../declarations';
 
 const debug = Debug('feathers-refresh-token');
 
@@ -14,10 +15,10 @@ const debug = Debug('feathers-refresh-token');
  userIdField - user ID filed in database, i.e. subject field in JWT, used to look up refresh token
 */
 
-export const issueRefreshToken = (): Hook => {
+export const issueRefreshToken = (options = {}) => {
   return async (context: HookContext) => {
     const { app, result } = context;
-    const config = loadConfig(app);
+    const config = loadConfig(app as Application);
 
     debug(`Issue Refresh token with auth result`, result);
 

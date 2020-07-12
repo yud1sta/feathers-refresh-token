@@ -2,20 +2,19 @@ import { NotAuthenticated, BadRequest } from '@feathersjs/errors';
 import { Hook, HookContext, Service } from '@feathersjs/feathers';
 import { lookupRefreshToken, loadConfig } from './common';
 import Debug from 'debug';
+import { Application } from '../declarations';
 
-const debug = Debug('feathers-refresh-tokens');
+const debug = Debug('feathers-refresh-token');
 
-export const logoutUser = (): Hook => {
+export const logoutUser = (options = {}) => {
   return async (context: HookContext) => {
-    const { app, type, params } = context;
-    const config = loadConfig(app);
+    const { app, type, params, id } = context;
+    const config = loadConfig(app as Application);
     const { entity, userIdField, authService } = config;
     //refresh Token only valid for before token and called from external
     if (type === 'after') {
-      debug('Logout user after delete refresh token', context.result, params);
+      debug('Logout user after delete refresh token', params);
 
-      // important, have to reset the query or won't be able to find users ID
-      params.query = {};
       const user = await app.service(authService).remove(null, params);
       debug('Logout user after delete refresh token', user, context.result);
 
@@ -26,21 +25,19 @@ export const logoutUser = (): Hook => {
 
     const { query, user } = params;
 
-    debug('Hook params', query, user);
+    debug('Logout hook id and params', id, query, user);
     if (!query) {
       throw new Error(`Invalid query strings!`);
     }
 
-    [entity, userIdField].forEach((p) => {
-      if (p in query) return;
-      throw new BadRequest(`${p} is missing from request`);
-    });
+    if (!query[entity] || !id) throw new BadRequest(`Bad request`);
 
     const existingToken = await lookupRefreshToken(
       context,
-      query[userIdField],
+      id as string,
       query[entity]
     );
+
     debug('Find existing refresh token result', existingToken);
     if (existingToken) {
       const { _id } = existingToken; // refresh token ID in database
@@ -51,6 +48,8 @@ export const logoutUser = (): Hook => {
 
       // set context ID to refresh token ID to delete it from DB
       context.id = _id;
+      // important, have to reset the query or won't be able to find users ID
+      params.query = {};
       return context;
     }
     throw new NotAuthenticated();

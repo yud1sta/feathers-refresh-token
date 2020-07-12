@@ -1,13 +1,13 @@
 import { HookContext, Application } from '@feathersjs/feathers';
 import Debug from 'debug';
-const debug = Debug('autohomekeeper');
+
+const debug = Debug('feathers-refresh-token');
 
 const defaultOptions = {
   service: 'refresh-tokens',
   authService: 'authentication',
   entity: 'refreshToken',
-  userIdField: '_id',
-  subField: 'sub',
+  userIdField: 'sub',
   secret: 'super secret',
   options: {
     header: {

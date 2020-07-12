@@ -1,16 +1,18 @@
 import { NotAuthenticated, BadRequest } from '@feathersjs/errors';
-import { Hook, HookContext } from '@feathersjs/feathers';
-import { lookupRefreshToken, loadConfig } from './common';
+import { Hook, HookContext, Service } from '@feathersjs/feathers';
 import Debug from 'debug';
 
-const debug = Debug('feathers-refresh-tokens');
+import { lookupRefreshToken, loadConfig } from './common';
+import { Application } from '../declarations';
+
+const debug = Debug('feathers-refresh-token');
 
 // Before create hook refresh token service to refresh access token
 // data: post data with sub and refresh token
-export const refreshAccessToken = (): Hook => {
+export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
   return async (context: HookContext) => {
     const { data, app, type, params } = context;
-    const config = loadConfig(app);
+    const config = loadConfig(app as Application);
 
     // for internal call, simply return context
     if (!params.provider) {
