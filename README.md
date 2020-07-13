@@ -3,9 +3,9 @@
 Forked from [TheSinding/authentication-refresh-token](https://github.com/TheSinding/authentication-refresh-token)
 There are three major differences of my implementation:
 
-1. Implement refresh token via Feathers standalone service instead in Feathers authentication strategy,
-2. The form of refresh token is actual JWT instead of just uuid
-3. Support all authentication strategies (local, oAuth) instead of just local strategy
+1. Implement refresh token via Feathers standalone service instead of as Feathers authentication strategy,
+2. The form of refresh token is actual JWT
+3. Support all authentication strategies (local, oAuth)
 
 ## Refresh Tokens Hooks for Feathers
 
@@ -15,13 +15,55 @@ Leveraging built-in service and JWT support in Feathers to implement refresh tok
 2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with valid refresh token
 3. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
 
-### This is still new, so use with caution!!!
+### This is still new, so use with caution
 
 ### Import this package to your Feathers App project
 
-To install and use the strategy, `npm install @jackywxd/feathers-refresh-token` or `yarn add @jackywxd/feathers-refresh-token`
+`npm install @jackywxd/feathers-refresh-token` or `yarn add @jackywxd/feathers-refresh-token`
 
-### Configure a service as refresh token endpoint, default is /refresh-tokens
+### Add 'refresh-token' config in default.json under authentication section. It is suggested that change access token expiresIn to 15m.
+
+- entity: the refresh token entity name,
+- service: the refresh token service name
+- authService: the name of authentication service
+- userIdField: user ID filed in authenticate result,
+- secret: secret of refresh token JWT, should be different than access token's secret
+- options: refresh token JWT options
+
+```json
+  "authentication": {
+    "entity": "user",
+    "service": "users",
+    "secret": "Mor17jj93SV4Q26GvivuvOySqA0=",
+    "authStrategies": ["jwt", "local"],
+    "jwtOptions": {
+      "header": {
+        "typ": "access"
+      },
+      "audience": "https://yourdomain.com",
+      "issuer": "feathers",
+      "algorithm": "HS512",
+      "expiresIn": "15m"
+    },
+    "refresh-token": {
+      "entity": "refreshToken",
+      "service": "refresh-tokens",
+      "authService": "authentication",
+      "userIdField": "_id",
+      "secret": "oQQjDiCO/Okmm/AUMN7aqKXod+M=asdfasdfasdf99kdsl)(&&3mc,",
+      "options": {
+        "header": {
+          "typ": "refresh"
+        },
+        "audience": "https://example.com",
+        "issuer": "example",
+        "algorithm": "HS256",
+        "expiresIn": "360d"
+      }
+    },
+```
+
+### Configure a service as refresh token endpoint, the name should match the settings in config, default is refresh-tokens
 
 refresh-tokens.service.ts
 
@@ -56,7 +98,7 @@ export default function (app: Application) {
 }
 ```
 
-### Depends on the DB model you are using, you may need to configure refresh-tokens model
+### Depends on the DB model you are using, you may need to configure refresh-tokens model. Below is the model file for mongoose
 
 refresh-tokens.model.ts
 
