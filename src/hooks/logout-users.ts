@@ -14,7 +14,8 @@ export const logoutUser = (options = {}) => {
     //refresh Token only valid for before token and called from external
     if (type === 'after') {
       debug('Logout user after delete refresh token', params);
-
+      // important, have to reset the query or won't be able to find users ID
+      params.query = {};
       const user = await app.service(authService).remove(null, params);
       debug('Logout user after delete refresh token', user, context.result);
 
@@ -48,8 +49,6 @@ export const logoutUser = (options = {}) => {
 
       // set context ID to refresh token ID to delete it from DB
       context.id = _id;
-      // important, have to reset the query or won't be able to find users ID
-      params.query = {};
       return context;
     }
     throw new NotAuthenticated();

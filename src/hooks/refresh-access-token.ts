@@ -24,11 +24,6 @@ export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
       throw new Error('Refresh token must be used with before token');
     }
 
-    // user is the user entity object
-    if (!params.user) {
-      throw new Error('This hook must be used with JWT strategy');
-    }
-
     const { entity, userIdField, authService } = config;
     [entity, userIdField].forEach((p) => {
       if (p in data) return;
@@ -58,7 +53,7 @@ export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
       debug('Verify Refresh Token result', tokenVerifyResult);
 
       // Input data[userIdFiled] must match the sub in Refresh Token
-      if (tokenVerifyResult[userIdField] !== data[userIdField]) {
+      if (tokenVerifyResult.sub !== data[userIdField]) {
         throw new Error(`Invalid token`);
       }
 

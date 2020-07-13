@@ -5,9 +5,9 @@
     "outDir": "./lib",
     "rootDir": "./src",
     "strict": true,
-    "declaration": true /* Generates corresponding '.d.ts' file. */,
-    "sourceMap": true,
     "esModuleInterop": true
   },
-  "exclude": ["examples"]
+  "exclude": [
+    "test"
+  ]
 }

@@ -22,16 +22,22 @@ export const issueRefreshToken = (options = {}) => {
 
     debug(`Issue Refresh token with auth result`, result);
 
-    const { entity, userIdField, authService } = config;
-    // userIdField must be presented in result
-    if (!(userIdField in result)) {
+    const { entity, userObj, userIdField, authService } = config;
+    let userId;
+    let user = result[userObj];
+    if (user) {
+      userId = user[userIdField];
+    } else if (userIdField in result) {
+      userId = result[userIdField];
+    } else {
+      // userIdField must be presented in result
       debug(`${config['userIdField']} doesn't exist in auth result`, result);
       return context;
     }
 
     const entityService = app.service(config.service);
-    const user = result[userIdField];
-    const existingToken = await lookupRefreshToken(context, user);
+
+    const existingToken = await lookupRefreshToken(context, userId);
 
     debug(`existing token`, existingToken);
 
@@ -44,7 +50,7 @@ export const issueRefreshToken = (options = {}) => {
     // Use authentication service to generate the refresh token with user ID
     const refreshToken = await app.service(authService).createAccessToken(
       {
-        [userIdField]: user,
+        sub: userId,
       },
       config.options, // refresh token options
       config.secret // refresh token secret, should be different than access token
@@ -52,8 +58,8 @@ export const issueRefreshToken = (options = {}) => {
 
     // save the refresh token ID
     const token = await entityService.create({
-      [entity]: refreshToken,
-      [userIdField]: user,
+      refreshToken,
+      userId,
       isValid: true,
     });
 

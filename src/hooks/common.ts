@@ -7,7 +7,8 @@ const defaultOptions = {
   service: 'refresh-tokens',
   authService: 'authentication',
   entity: 'refreshToken',
-  userIdField: 'sub',
+  userObj: 'user',
+  userIdField: '_id',
   secret: 'super secret',
   options: {
     header: {
@@ -16,6 +17,7 @@ const defaultOptions = {
     audience: 'https://example.com',
     issuer: 'example',
     algorithm: 'HS256',
+    expiresIn: '360d',
   },
 };
 
@@ -41,17 +43,17 @@ export const lookupRefreshToken = async (
 ) => {
   const { app } = context;
   const config = loadConfig(app);
-  const { entity, userIdField } = config;
   const entityService = app.service(config.service);
 
-  let query = {
-    [userIdField]: userId,
+  let query: any = {
+    userId,
     isValid: true,
   };
+
   if (refreshToken) {
     query = {
       ...query,
-      [entity]: refreshToken,
+      refreshToken,
     };
   }
 
