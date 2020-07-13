@@ -33,11 +33,9 @@ export default function (app: Application) {
 
   app.use('/authentication', authentication);
   app.service('authentication').hooks({
-    // you might have to add this
     after: {
-      create: [issueRefreshToken()], // add the hook
+      create: [issueRefreshToken()],
     },
-    // error hooks
   });
   app.configure(expressOauth());
 }

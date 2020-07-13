@@ -1,130 +1,214 @@
-# Refresh Tokens Hooks for Feathers
+## Refresh Tokens Hooks for Feathers
 
-Leveraging existing JWT support in Feathers to implment refresh token funtionalities via couple hooks.
+Forked from [TheSinding/authentication-refresh-token](https://github.com/TheSinding/authentication-refresh-token)
+There are three major differences of my implementation:
 
-### This is still new, so use with caution.
+1. Implement refresh token via Feathers standalone service instead in Feathers authentication strategy,
+2. The form of refresh token is actual JWT instead of just uuid
+3. Support all authentication strategies (local, oAuth) instead of just local strategy
 
-## Requirements
+## Refresh Tokens Hooks for Feathers
 
-1. Configure a service as refresh token endpoint
+Leveraging built-in service and JWT support in Feathers to implement refresh token functionalities via couple hooks:
 
-## What it does
+1. issueRefreshToken - issuing refresh token after user authenticated successfully and save it via refresh-tokens service
+2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with valid refresh token
+3. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
 
-When a user authenticates with local authentication, the receive a "Refresh Token" which the user can use to create new JWT access tokens.
+### This is still new, so use with caution!!!
 
-## Installation
+### Import this package to your Feathers App project
 
-To install and use the strategy, first run `npm install`.
-`npm install @thesinding/authentication-refresh-token`
+To install and use the strategy, `npm install @jackywxd/feathers-refresh-token` or `yarn add @jackywxd/feathers-refresh-token`
 
-Now add the strategy to your `authentication.(ts|js)` like so:
+### Configure a service as refresh token endpoint, default is /refresh-tokens
 
-```javascript
-... // other imports
-const { RefreshTokenStrategy } =  require('@thesinding/authentication-refresh-token');
+refresh-tokens.service.ts
 
-module.exports  =  app  => {
-	... // Other authentications strategies
-	authentication.register('refresh-token', new  RefreshTokenStrategy()); // add the strategy
-	... // Rest of the file
-};
-```
+```typescript
+// Initializes the `refresh-tokens` service on path `/refresh-tokens`
+import { ServiceAddons } from '@feathersjs/feathers';
+import { Application } from '../../declarations';
+import { RefreshTokens } from './refresh-tokens.class';
+import createModel from '../../models/refresh-tokens.model';
+import hooks from './refresh-tokens.hooks';
 
-Then add the authentication hook like so:
-
-```javascript
-const { RefreshTokenStrategy, addRefreshToken } =  require('@thesinding/authentication-refresh-token');
-
-module.exports  =  app  => {
-	... // Other authentications strategies
-	authentication.register('refresh-token', new  RefreshTokenStrategy()); // add the strategy
-
-	app.service('authentication').hooks({ // you might have to add this
-		... // before hooks
-		after: {
-			create: [addRefreshToken()] // add the hook
-		},
-		// error hooks
-	});
-	... // Rest of the file
-};
-```
-
-Create a service, this is where your app will store the refresh tokens.
-Use what every database adapter you want, depending on your setup.
-`feathers generate service`
-
-Now it all need to be added in the configuration:
-
-```jsonc
-{
-  "host": "localhost",
-  "port": 3030,
-  "public": "../public/",
-  "paginate": {
-    "default": 10,
-    "max": 50
-  },
-  "authentication": {
-	 // other settings
-    "authStrategies": [
-      "jwt",
-      "local",
-      "refresh-token" // Add the refresh token as a strategy
-    ],
-    "jwtOptions": {  // Your JWT options  },
-    // other strategies,
-    "refresh-token": {
-	  "entity": "refresh-token", // this needs to be the same as in your model (if you have one)
-	  "service": "refresh-tokens", // The service which you have created
-	  "clientIdField": "clientId" // the name of the client id field
-    }
-   }
+// Add this service to the service type index
+declare module '../../declarations' {
+  interface ServiceTypes {
+    'refresh-tokens': RefreshTokens & ServiceAddons<any>;
+  }
 }
 
+export default function (app: Application) {
+  const options = {
+    Model: createModel(app),
+    paginate: app.get('paginate'),
+  };
+
+  // Initialize our service with any options it requires
+  app.use('/refresh-tokens', new RefreshTokens(options, app));
+
+  // Get our initialized service so that we can register hooks
+  const service = app.service('refresh-tokens');
+
+  service.hooks(hooks as any);
+}
 ```
 
-Done.
+### Depends on the DB model you are using, you may need to configure refresh-tokens model
 
-Try to authenticate as normal eg.
+refresh-tokens.model.ts
 
-```http
-curl -H "Content-Type: application/json" -X POST -d '{ "strategy": "local", "email":"example@example.com","password":"X2y6" }' http://localhost:3030/authenticate
-```
+```typescript
+export default function (app: Application) {
+  const modelName = 'refreshTokens';
+  const mongooseClient = app.get('mongooseClient');
+  const { Schema } = mongooseClient;
 
-The response should look something like this:
-
-```jsonc
-{
-    "authentication": {
-        "strategy": "local"
+  const schema = new Schema(
+    {
+      userId: { type: String, required: true },
+      refreshToken: { type: String, required: true },
+      isValid: { type: Boolean, required: true }, // refresh token is valid or not
+      device: String,
     },
-    "accessToken": "TOKEN DATA", // The access token
-    "user": { // User data },
-    "refreshToken": "9683fe86-aef1-4b3d-a0eb-da57624c62cf" // Store this token
+    {
+      validateBeforeSave: false,
+      timestamps: true,
+    }
+  );
+
+  // This is necessary to avoid model compilation errors in watch mode
+  // see https://mongoosejs.com/docs/api/connection.html#connection_Connection-deleteModel
+  if (mongooseClient.modelNames().includes(modelName)) {
+    mongooseClient.deleteModel(modelName);
+  }
+  return mongooseClient.model(modelName, schema);
 }
 ```
 
-The `refreshToken` can now be used to refresh the `accessToken` like so:
+### Add issue refresh token to Feathers Authentication after create hook
+
+authentication.ts
+
+```typescript
+export default function (app: Application) {
+  const authentication = new AuthenticationService(app);
+
+  authentication.register('jwt', new MyJwtStrategy());
+  authentication.register('local', new LocalStrategy());
+
+  app.use('/authentication', authentication);
+  app.service('authentication').hooks({
+    after: {
+      create: [issueRefreshToken()],
+    },
+  });
+  app.configure(expressOauth());
+}
+```
+
+### Update refresh-tokens.hooks.ts to add refreshAccessToken to before/create hook,Add logoutUser to before/remove hook and after/remove hook
+
+refresh-tokens.hooks.ts
+
+```typescript
+export default {
+  before: {
+    all: [],
+    find: [],
+    get: [],
+    create: [refreshAccessToken()],
+    update: [],
+    patch: [],
+    remove: [authenticate('jwt'), logoutUser()],
+  },
+
+  after: {
+    all: [],
+    find: [],
+    get: [],
+    create: [],
+    update: [],
+    patch: [],
+    remove: [logoutUser()],
+  },
+
+  error: {
+    all: [],
+    find: [],
+    get: [],
+    create: [],
+    update: [],
+    patch: [],
+    remove: [],
+  },
+};
+```
+
+## Examples
+
+### Authenticate user Authentication response, client needs to save the user Id and refresh token for future use.
 
 ```http
-curl -H "Content-Type: application/json" -X POST -d '{ "strategy": "refresh-token", "clientId": "The ID of the user", "refreshToken": "The clients refresh token" }' http://localhost:3030/authenticate
-```
-
-It's respond should look similar to this, if the `refreshToken` and the `clientId` matches:
-
-```jsonc
+HTTP/1.1 201 Created
 {
+  "accessToken": "...JWT...",
   "authentication": {
-    "strategy": "refresh-token"
+    "strategy": "local"
   },
-  "accessToken": "TOKEN DATA", // The refreshed access token
-  "user": { // User data }
+  "user": {
+    "strategy": "local",
+    "email": "test@test.com",
+    "_id": "user ID"
+  },
+  "refreshToken": "...JWT..."
 }
 ```
 
-## Changelog:
+### After access token expiration, make a POST request to /refresh-tokens endpoint along with userID and refresh token to get a new access token
+
+```http
+POST http://localhost:3030/refresh-tokens
+Content-Type: application/json
+
+{
+  "_id": "user ID",
+  "refreshToken": "...JWT token..."
+}
+```
+
+response:
+
+```http
+HTTP/1.1 201 Created
+{
+  "refreshToken": "same refresh token",
+  "_id": "same user Id",
+  "accessToken": "new access token"
+}
+
+```
+
+### To logout user, client makes a DELETE request to /refresh-tokens/userID endpoint. Unlike POST request, DELETE request is protected, client needs to set the Authorization header to access it.
+
+```http
+DELETE http://localhost:3030/refresh-tokens/<user ID>?refreshToken=<refresh token>
+Authorization:<access token>
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+{
+"status": "Logout successfully"
+}
+```
+
+## Change-log:
 
 ```text
-0.0.1 - initial release
+0.0.6 - initial release
 ```
