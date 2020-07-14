@@ -1,0 +1,9 @@
+
+POST http://localhost:3030/refresh-tokens
+Content-Type: application/json
+
+{
+  "id": "1",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6InJlZnJlc2gifQ.eyJzdWIiOjEsImlhdCI6MTU5NDc2MjY4NywiZXhwIjoxNjI1ODY2Njg3LCJhdWQiOiJodHRwczovL2V4YW1wbGUuY29tIiwiaXNzIjoiZXhhbXBsZSIsImp0aSI6IjQ2YzRlNGE5LTJjNDAtNGFiZS04MzUwLWEwYWNlMzM2Y2VjMyJ9.ZMwg7Ld-RiXDMjHqGkV1GtFshnrzeBkCFOonfJ4dLtc"
+}
+
