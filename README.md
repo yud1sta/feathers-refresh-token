@@ -12,7 +12,7 @@ There are three major differences of my implementation:
 Leveraging built-in service and JWT support in Feathers to implement refresh token functionalities via couple hooks:
 
 1. issueRefreshToken - issuing refresh token after user authenticated successfully and save it via refresh-tokens service
-2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with valid refresh token
+2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with user Id and valid refresh token
 3. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
 
 ### This is still new, so use with caution
@@ -127,6 +127,55 @@ export default function (app: Application) {
     mongooseClient.deleteModel(modelName);
   }
   return mongooseClient.model(modelName, schema);
+}
+```
+
+model file for sequelize:
+
+```typescript
+// See http://docs.sequelizejs.com/en/latest/docs/models-definition/
+// for more of what you can do here.
+import { Sequelize, DataTypes } from 'sequelize';
+import { Application } from '../declarations';
+
+export default function (app: Application) {
+  const sequelizeClient: Sequelize = app.get('sequelizeClient');
+  const refreshTokens = sequelizeClient.define(
+    'refresh_tokens',
+    {
+      userId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      refreshToken: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      deviceId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      isValid: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+      },
+    },
+    {
+      hooks: {
+        beforeCount(options: any) {
+          options.raw = true;
+        },
+      },
+    }
+  );
+
+  // eslint-disable-next-line no-unused-vars
+  (refreshTokens as any).associate = function (models: any) {
+    // Define associations here
+    // See http://docs.sequelizejs.com/en/latest/docs/associations/
+  };
+
+  return refreshTokens;
 }
 ```
 
