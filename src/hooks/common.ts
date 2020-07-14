@@ -7,7 +7,6 @@ const defaultOptions = {
   service: 'refresh-tokens',
   authService: 'authentication',
   entity: 'refreshToken',
-  userObj: 'user',
   userIdField: '_id',
   secret: 'super secret',
   options: {
@@ -22,12 +21,15 @@ const defaultOptions = {
 };
 
 export const loadConfig = (app: Application) => {
-  const { 'refresh-token': config } = app.get('authentication');
+  const { entity: userObj, 'refresh-token': config } = app.get(
+    'authentication'
+  );
 
   debug(`Refresh token config from config file`, config);
   // merge default options and options loaded from config
   const finalOptions = {
     ...defaultOptions,
+    userObj,
     ...config,
   };
 
@@ -46,7 +48,7 @@ export const lookupRefreshToken = async (
   const entityService = app.service(config.service);
 
   let query: any = {
-    userId,
+    userId: `${userId}`,
     isValid: true,
   };
 

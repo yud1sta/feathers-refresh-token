@@ -53,7 +53,7 @@ export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
       debug('Verify Refresh Token result', tokenVerifyResult);
 
       // Input data[userIdFiled] must match the sub in Refresh Token
-      if (tokenVerifyResult.sub !== data[userIdField]) {
+      if (`${tokenVerifyResult.sub}` !== data[userIdField]) {
         throw new Error(`Invalid token`);
       }
 

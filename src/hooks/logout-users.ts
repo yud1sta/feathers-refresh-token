@@ -41,14 +41,15 @@ export const logoutUser = (options = {}) => {
 
     debug('Find existing refresh token result', existingToken);
     if (existingToken) {
-      const { _id } = existingToken; // refresh token ID in database
-      if (!_id) {
+      const { _id, id } = existingToken; // refresh token ID in database
+      const tokenId = _id ? _id : id;
+      if (!tokenId) {
         throw new Error('Invalid refresh token!');
       }
-      debug('Deleting token id', _id);
+      debug('Deleting token id', tokenId);
 
       // set context ID to refresh token ID to delete it from DB
-      context.id = _id;
+      context.id = tokenId;
       return context;
     }
     throw new NotAuthenticated();
