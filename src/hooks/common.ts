@@ -1,36 +1,29 @@
 import { HookContext, Application } from '@feathersjs/feathers';
 import Debug from 'debug';
+import { defaultOptions, RefreshTokenOptions, RefreshTokenData } from './core';
 
 const debug = Debug('feathers-refresh-token');
 
-const defaultOptions = {
-  service: 'refresh-tokens',
-  authService: 'authentication',
-  entity: 'refreshToken',
-  userIdField: '_id',
-  secret: 'super secret',
-  options: {
-    header: {
-      typ: 'refresh',
-    },
-    audience: 'https://example.com',
-    issuer: 'example',
-    algorithm: 'HS256',
-    expiresIn: '360d',
-  },
-};
-
 export const loadConfig = (app: Application) => {
-  const { entity: userObj, 'refresh-token': config } = app.get(
-    'authentication'
-  );
+  const defaultAuthKey = app.get('defaultAuthentication');
+  const {
+    entity: userEntity,
+    entityId: userEntityId,
+    'refresh-token': config
+  } = app.get(defaultAuthKey);
+
+  if (!userEntity || !defaultAuthKey) {
+    throw new Error(`Missing default Authentication and user entity config!`);
+  }
 
   debug(`Refresh token config from config file`, config);
   // merge default options and options loaded from config
-  const finalOptions = {
+  const finalOptions: RefreshTokenOptions = {
     ...defaultOptions,
-    userObj,
-    ...config,
+    authService: defaultAuthKey, // authentication service
+    userEntityId: userEntityId ? userEntityId : 'id',
+    userEntity, // user entity
+    ...config
   };
 
   debug(`Returning final options for refresh token`, finalOptions);
@@ -40,33 +33,43 @@ export const loadConfig = (app: Application) => {
 // used this hook with authentication service
 export const lookupRefreshToken = async (
   context: HookContext,
-  userId: string,
-  refreshToken?: string
-) => {
+  params: Partial<RefreshTokenData>
+): Promise<RefreshTokenData | null> => {
   const { app } = context;
+  const { userId, deviceId, isValid, refreshToken } = params;
   const config = loadConfig(app);
   const entityService = app.service(config.service);
 
-  let query: any = {
+  if (!entityService) {
+    return null;
+  }
+
+  let query: Partial<RefreshTokenData> = {
     userId: `${userId}`,
-    isValid: true,
+    isValid: true
   };
 
   if (refreshToken) {
     query = {
       ...query,
-      refreshToken,
+      refreshToken
     };
   }
 
+  if (deviceId) {
+    query = {
+      ...query,
+      deviceId
+    };
+  }
   const existingToken = await entityService.find({
-    query,
+    query
   });
 
   debug(`Refresh token lookup result %O`, existingToken);
 
   if (existingToken.total > 0) {
-    const data = existingToken.data[0];
+    const data: RefreshTokenData = existingToken.data[0];
     return data;
   }
   return null;

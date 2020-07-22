@@ -20,22 +20,6 @@
       "algorithm": "HS256",
       "expiresIn": "1d"
     },
-    "refresh-token": {
-      "entity": "refreshToken",
-      "service": "refresh-tokens",
-      "authService": "authentication",
-      "userIdField": "id",
-      "secret": "oQQjDiCO/Okmm/AUMN7aqKXod+M=asdfasdfasdf99kdsl)(&&3mc,",
-      "options": {
-        "header": {
-          "typ": "refresh"
-        },
-        "audience": "https://example.com",
-        "issuer": "example",
-        "algorithm": "HS256",
-        "expiresIn": "360d"
-      }
-    },
     "local": {
       "usernameField": "email",
       "passwordField": "password"
