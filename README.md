@@ -1,4 +1,4 @@
-## Refresh Tokens Hooks for Feathers
+# Refresh tokens hooks for Feathers
 
 Forked from [TheSinding/authentication-refresh-token](https://github.com/TheSinding/authentication-refresh-token)
 There are three major differences of my implementation:
@@ -7,32 +7,44 @@ There are three major differences of my implementation:
 2. The form of refresh token is actual JWT
 3. Support all authentication strategies (local, oAuth)
 
-## Refresh Tokens Hooks for Feathers
+## Key features
 
-Leveraging built-in service and JWT support in Feathers to implement refresh token functionalities via couple hooks:
+Leveraging existing Feathers built-in authentication service and JWT support to implement refresh token functionalities via couple hooks:
 
-1. issueRefreshToken - issuing refresh token after user authenticated successfully and save it via refresh-tokens service
-2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with user Id and valid refresh token
+1. issueRefreshToken - issuing refresh token after user authenticated successfully and save it via custom refresh-tokens service
+2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with user Id and a valid refresh token
 3. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
 
-### This is still new, so use with caution
+### This is still new, use with caution
+
+****
+
+## How to use it
+
+1. Create a Feathers App (`feathers generate app`)
+2. Authentication should be enable, authentication strategies and user entity service is setup properly
+3. Import feathers-refresh-token
+4. Add a custom service (`feathers generate service`)
+5. Add refresh-token config in default.json
+7. Add hooks to authentication service and customer service created on step 4
 
 ### Import this package to your Feathers App project
 
-`npm install @jackywxd/feathers-refresh-token` or `yarn add @jackywxd/feathers-refresh-token`
+`npm install @jackywxd/feathers-refresh-token` 
+or
+`yarn add @jackywxd/feathers-refresh-token`
 
-### Add 'refresh-token' config in default.json under authentication section. It is suggested that change access token expiresIn to 15m.
+### Add 'refresh-token' config section in default.json under authentication section. Basically it mirrors the settings of authentication. It is suggested that change access token expiresIn to 15m
 
 - entity: the refresh token entity name,
 - service: the refresh token service name
-- authService: the name of authentication service
-- userIdField: user ID filed in authenticate result,
 - secret: secret of refresh token JWT, should be different than access token's secret
-- options: refresh token JWT options
+- jwtOptions: refresh token JWT options
 
 ```json
   "authentication": {
     "entity": "user",
+    "entityId": "_id",
     "service": "users",
     "secret": "Mor17jj93SV4Q26GvivuvOySqA0=",
     "authStrategies": ["jwt", "local"],
@@ -47,11 +59,10 @@ Leveraging built-in service and JWT support in Feathers to implement refresh tok
     },
     "refresh-token": {
       "entity": "refreshToken",
+      "entityId": "_id",
       "service": "refresh-tokens",
-      "authService": "authentication",
-      "userIdField": "_id",
       "secret": "oQQjDiCO/Okmm/AUMN7aqKXod+M=asdfasdfasdf99kdsl)(&&3mc,",
-      "options": {
+      "jwtOptions": {
         "header": {
           "typ": "refresh"
         },
@@ -63,7 +74,27 @@ Leveraging built-in service and JWT support in Feathers to implement refresh tok
     },
 ```
 
-### Configure a service as refresh token endpoint, the name should match the settings in config, default is refresh-tokens
+### If "refresh-token" config section is missing in default.json file, the default refresh-token options will be used as below.
+
+```typescript
+export const defaultOptions = {
+  service: 'refresh-tokens', // refresh-token service name
+  entity: 'refreshToken', // refresh-token entity
+  entityId: 'id', // refresh-token entity Id
+  secret: 'supersecret', // secret for Refresh token
+  jwtOptions: {
+    header: {
+      typ: 'refresh'
+    },
+    audience: 'https://example.com',
+    issuer: 'example',
+    algorithm: 'HS256',
+    expiresIn: '360d'
+  }
+};
+```
+
+### Configure a service as refresh token endpoint, the name should match the "service" name in refresh-token config options, default is refresh-tokens. This is the endpoint client used to refresh access token and logout user
 
 refresh-tokens.service.ts
 
@@ -98,8 +129,22 @@ export default function (app: Application) {
 }
 ```
 
-### Depends on the DB model you are using, you may need to configure refresh-tokens model. Below is the model file for mongoose
+### Depends on the DB model you are using, you may need to configure refresh-tokens model. Below is the refresh-token data type interface
 
+```typescript
+export type RefreshTokenData = {
+  id: string; // id filed for refresh token
+  _id: string;
+  userId: string; // user Id
+  refreshToken: string; // refresh token
+  isValid: boolean; // refresh token is valid or not
+  deviceId: string; // user login device Id, provied by client
+  location: string; // user login location, provided by client
+  loginTime: string; // user login timeStamp
+};
+```
+
+Below is the model file for mongoose
 refresh-tokens.model.ts
 
 ```typescript
@@ -113,7 +158,7 @@ export default function (app: Application) {
       userId: { type: String, required: true },
       refreshToken: { type: String, required: true },
       isValid: { type: Boolean, required: true }, // refresh token is valid or not
-      device: String,
+      deviceId: String,
     },
     {
       validateBeforeSave: false,
@@ -179,7 +224,7 @@ export default function (app: Application) {
 }
 ```
 
-### Add issue refresh token to Feathers Authentication after create hook
+### Add issueRefreshToken to Feathers Authentication after create hook
 
 authentication.ts
 
@@ -200,7 +245,7 @@ export default function (app: Application) {
 }
 ```
 
-### Update refresh-tokens.hooks.ts to add refreshAccessToken to before/create hook,Add logoutUser to before/remove hook and after/remove hook
+### Update refresh-tokens.hooks.ts to add refreshAccessToken to before/create hook, add logoutUser to before/remove hook and after/remove hook
 
 refresh-tokens.hooks.ts
 
@@ -282,7 +327,7 @@ HTTP/1.1 201 Created
 
 ```
 
-### To logout user, client makes a DELETE request to /refresh-tokens/userID endpoint. Unlike POST request, DELETE request is protected, client needs to set the Authorization header to access it.
+### To logout user, client makes a DELETE request to /refresh-tokens/userID endpoint. Unlike POST request, DELETE request is protected, client needs to set the Authorization header to access it
 
 ```http
 DELETE http://localhost:3030/refresh-tokens/<user ID>?refreshToken=<refresh token>
@@ -298,8 +343,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Change-log:
+## Change-log
 
 ```text
+0.1.0 - Simply and align refresh-token config options with existing authentication options; update typescript typing
 0.0.6 - initial release
 ```

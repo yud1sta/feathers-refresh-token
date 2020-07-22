@@ -9,8 +9,9 @@ const debug = Debug('feathers-refresh-token');
 export const logoutUser = (options = {}) => {
   return async (context: HookContext) => {
     const { app, type, params, id } = context;
-    const config = loadConfig(app as Application);
-    const { entity, userIdField, authService } = config;
+    const config = loadConfig(app);
+    const { entity, entityId, authService } = config;
+
     //refresh Token only valid for before token and called from external
     if (type === 'after') {
       debug('Logout user after delete refresh token', params);
@@ -31,18 +32,17 @@ export const logoutUser = (options = {}) => {
       throw new Error(`Invalid query strings!`);
     }
 
+    // must provide current refreshToken in query and user Id to logout
     if (!query[entity] || !id) throw new BadRequest(`Bad request`);
 
-    const existingToken = await lookupRefreshToken(
-      context,
-      id as string,
-      query[entity]
-    );
+    const existingToken = await lookupRefreshToken(context, {
+      userId: id as string,
+      refreshToken: query[entity]
+    });
 
     debug('Find existing refresh token result', existingToken);
     if (existingToken) {
-      const { _id, id } = existingToken; // refresh token ID in database
-      const tokenId = _id ? _id : id;
+      const { [entityId]: tokenId } = existingToken; // refresh token ID in database
       if (!tokenId) {
         throw new Error('Invalid refresh token!');
       }

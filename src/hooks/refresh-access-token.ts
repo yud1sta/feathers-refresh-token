@@ -24,17 +24,16 @@ export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
       throw new Error('Refresh token must be used with before token');
     }
 
-    const { entity, userIdField, authService } = config;
-    [entity, userIdField].forEach((p) => {
+    const { entity, userEntityId, authService, jwtOptions, secret } = config;
+    [entity, userEntityId].forEach((p) => {
       if (p in data) return;
       throw new BadRequest(`${p} is missing from request`);
     });
 
-    const existingToken = await await lookupRefreshToken(
-      context,
-      data[userIdField],
-      data[entity]
-    );
+    const existingToken = await await lookupRefreshToken(context, {
+      userId: data[userEntityId],
+      refreshToken: data[entity]
+    });
 
     debug('Find existing refresh token result', existingToken);
 
@@ -44,30 +43,26 @@ export const refreshAccessToken = (options = {}): Hook<any, Service<any>> => {
       // validate refresh token
       const tokenVerifyResult = await app!
         .service(authService)
-        ?.verifyAccessToken(
-          existingToken[entity],
-          config.options,
-          config.secret
-        );
+        ?.verifyAccessToken(existingToken['refreshToken'], jwtOptions, secret);
 
       debug('Verify Refresh Token result', tokenVerifyResult);
 
       // Input data[userIdFiled] must match the sub in Refresh Token
-      if (`${tokenVerifyResult.sub}` !== data[userIdField]) {
+      if (`${tokenVerifyResult.sub}` !== data[userEntityId]) {
         throw new Error(`Invalid token`);
       }
 
       debug('Creating new access token');
       const accessToken = await app!.service(authService)?.createAccessToken({
-        [userIdField]: data[userIdField],
+        [userEntityId]: data[userEntityId]
       });
 
       debug('Issued new access token', accessToken);
 
       context.result = {
         [entity]: data[entity],
-        [userIdField]: data[userIdField],
-        accessToken,
+        [userEntityId]: data[userEntityId],
+        accessToken
       };
       return context;
     }

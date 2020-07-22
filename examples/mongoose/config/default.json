@@ -8,8 +8,9 @@
   },
   "authentication": {
     "entity": "user",
+    "entityId": "_id",
     "service": "users",
-    "secret": "JizDIM47FIw9+C7gXJp5QyyhoJA=",
+    "secret": "Mor17jj93SV4Q26GvivuvOySqA0=",
     "authStrategies": ["jwt", "local"],
     "jwtOptions": {
       "header": {
@@ -19,6 +20,21 @@
       "issuer": "feathers",
       "algorithm": "HS256",
       "expiresIn": "1d"
+    },
+    "refresh-token": {
+      "entity": "refreshToken",
+      "entityId": "_id",
+      "service": "refresh-tokens",
+      "secret": "oQQjDiCO/Okmm/AUMN7aqKXod+M=asdfasdfasdf99kdsl)(&&3mc,",
+      "jwtOptions": {
+        "header": {
+          "typ": "refresh"
+        },
+        "audience": "https://example.com",
+        "issuer": "example",
+        "algorithm": "HS256",
+        "expiresIn": "360d"
+      }
     },
     "local": {
       "usernameField": "email",

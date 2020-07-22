@@ -20,47 +20,60 @@ export const issueRefreshToken = (options = {}) => {
     const { app, result } = context;
     const config = loadConfig(app as Application);
 
+    const entityService = app.service(config?.service);
+    if (!entityService) {
+      throw new Error(
+        `The refresh-token option is not set in the refresh-token authentication configuration`
+      );
+    }
+
     debug(`Issue Refresh token with auth result`, result);
 
-    const { entity, userObj, userIdField, authService } = config;
+    const {
+      entity,
+      userEntity,
+      userEntityId,
+      authService,
+      jwtOptions,
+      secret
+    } = config;
     let userId;
-    let user = result[userObj];
+    let user = result[userEntity];
+
     if (user) {
-      userId = user[userIdField];
-    } else if (userIdField in result) {
-      userId = result[userIdField];
+      userId = user[userEntityId];
+    } else if (userEntityId in result) {
+      userId = result[userEntityId];
     } else {
       // userIdField must be presented in result
-      debug(`${config['userIdField']} doesn't exist in auth result`, result);
+      debug(`${userEntityId} doesn't exist in auth result`, result);
       return context;
     }
 
-    const entityService = app.service(config.service);
-
-    const existingToken = await lookupRefreshToken(context, userId);
+    const existingToken = await lookupRefreshToken(context, { userId });
 
     debug(`existing token`, existingToken);
 
     // if refresh token already exists, simply return
     if (existingToken) {
-      Object.assign(result, { [entity]: existingToken[entity] });
+      Object.assign(result, { [entity]: existingToken['refreshToken'] });
       return context;
     }
 
     // Use authentication service to generate the refresh token with user ID
     const refreshToken = await app.service(authService).createAccessToken(
       {
-        sub: userId,
+        sub: userId
       },
-      config.options, // refresh token options
-      config.secret // refresh token secret, should be different than access token
+      jwtOptions, // refresh token options
+      secret // refresh token secret, should be different than access token
     );
 
     // save the refresh token ID
     const token = await entityService.create({
       refreshToken,
       userId,
-      isValid: true,
+      isValid: true
     });
 
     debug(`Token ID and refresh token`, token, refreshToken);

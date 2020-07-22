@@ -3,7 +3,7 @@ POST http://localhost:3030/refresh-tokens
 Content-Type: application/json
 
 {
-  "_id": "5f0e27253c1964dd130ee34e",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6InJlZnJlc2gifQ.eyJzdWIiOiI1ZjBlMjcyNTNjMTk2NGRkMTMwZWUzNGUiLCJpYXQiOjE1OTQ3NjMwNTIsImV4cCI6MTYyNTg2NzA1MiwiYXVkIjoiaHR0cHM6Ly9leGFtcGxlLmNvbSIsImlzcyI6ImV4YW1wbGUiLCJqdGkiOiI5ODdkYTYyZC0wMGVlLTRmM2YtOTg2My1iMjQyOWI4MzI4ZmIifQ.x_aKa_DLnhBfKCgYy1TVANQumrB2f4y6xrxoj0HU5x4"
+  "id": "1",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6InJlZnJlc2gifQ.eyJzdWIiOjEsImlhdCI6MTU5NTQzMzI1MSwiZXhwIjoxNjI2NTM3MjUxLCJhdWQiOiJodHRwczovL2V4YW1wbGUuY29tIiwiaXNzIjoiZXhhbXBsZSIsImp0aSI6ImRmYmI2MWYwLTY2ZTYtNGUzYS04NGNhLTUwZTNlNTdiYzhkYSJ9.s7gJhUw7SRHclhJ5iO6Z-KOndY4LJSFFWsCIUOZwIrE"
 }
 
