@@ -103,6 +103,13 @@ export const lookupRefreshToken = async (
 
   if (existingToken && existingToken.total > 0 && existingToken.data) {
     const data: RefreshTokenData = existingToken.data[0];
+    // get expiration time from database
+    const { expiredAt } = data;
+    debug(`expiredAt`, +expiredAt!);
+    // make sure refresh token is not expired
+    if (expiredAt && new Date().getTime() > +expiredAt) {
+      throw new Error(`Invalid refresh token!`);
+    }
     return data;
   }
 
