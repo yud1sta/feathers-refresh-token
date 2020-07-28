@@ -2,7 +2,7 @@ import { ServiceAddons } from '@feathersjs/feathers';
 import {
   AuthenticationService,
   JWTStrategy,
-  AuthenticationResult,
+  AuthenticationResult
 } from '@feathersjs/authentication';
 import { LocalStrategy } from '@feathersjs/authentication-local';
 import { expressOauth } from '@feathersjs/authentication-oauth';
@@ -15,27 +15,17 @@ declare module './declarations' {
   }
 }
 
-class MyJwtStrategy extends JWTStrategy {
-  async getEntityId(authResult: AuthenticationResult) {
-    const {
-      authentication: { payload },
-    } = authResult;
-    console.log(authResult);
-    return payload.userId || payload._id;
-  }
-}
-
 export default function (app: Application) {
   const authentication = new AuthenticationService(app);
 
-  authentication.register('jwt', new MyJwtStrategy());
+  authentication.register('jwt', new JWTStrategy());
   authentication.register('local', new LocalStrategy());
 
   app.use('/authentication', authentication);
   app.service('authentication').hooks({
     after: {
-      create: [issueRefreshToken()],
-    },
+      create: [issueRefreshToken()]
+    }
   });
   app.configure(expressOauth());
 }
