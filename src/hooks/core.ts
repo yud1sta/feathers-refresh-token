@@ -29,15 +29,15 @@ export const defaultOptions = {
 
 // Refresn token data schema
 export type RefreshTokenData = {
-  id: string; // id filed for refresh token
-  _id: string;
+  id?: string; // id filed for refresh token
+  _id?: string;
   userId: string; // user Id
   refreshToken: string; // refresh token
   isValid: boolean; // refresh token is valid or not
-  expiredAt: number; // expiration date of refresh token
-  deviceId: string; // user login device Id, provied by client
-  location: string; // user login location, provided by client
-  loginTime: string; // user login timeStamp
+  expiredAt?: number; // expiration date of refresh token
+  deviceId?: string; // user login device Id, provied by client
+  location?: string; // user login location, provided by client
+  loginTime?: string; // user login timeStamp
 };
 
 export type RefreshTokenOptions = typeof defaultOptions &
