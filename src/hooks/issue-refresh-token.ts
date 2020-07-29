@@ -53,7 +53,7 @@ export const issueRefreshToken = (options = {}) => {
     if (deviceId) {
       query = { ...query, deviceId };
     }
-    const existingToken = await lookupRefreshToken(context, config, query);
+    const { existingToken } = await lookupRefreshToken(context, config, query);
 
     debug(`existing token`, existingToken);
 

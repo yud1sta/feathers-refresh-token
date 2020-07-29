@@ -8,6 +8,10 @@ import { RefreshTokenData } from './core';
 
 const debug = Debug('feathers-refresh-token');
 
+/*
+ * Revoke refresh-token by set isValid to false, it must be a protected route
+ * params.user must be populated with user entity
+ */
 export const revokeRefreshToken = (options = {}): Hook<any, Service<any>> => {
   return async (context: HookContext) => {
     const { data, app, method, type, params } = context;
@@ -23,6 +27,7 @@ export const revokeRefreshToken = (options = {}): Hook<any, Service<any>> => {
       debug('Internal API call for refresh token, simply return context');
       return context;
     }
+
     //revoke refresh Token only valid for before token and called from external
     if (type !== 'before') {
       throw new Error(
@@ -30,16 +35,24 @@ export const revokeRefreshToken = (options = {}): Hook<any, Service<any>> => {
       );
     }
 
+    // ! user must be authenticated
     const { entity, userEntityId } = config;
+    const { user } = params;
+
+    debug('Revoke refresh-token for user', user);
+
+    if (!user[userEntityId]) {
+      throw new Error(`Invalid query strings or user is not authenticated!`);
+    }
 
     //! validating user input
-    [entity, userEntityId].forEach((p) => {
+    [entity].forEach((p) => {
       if (p in data) return;
       throw new BadRequest(`${p} is missing from request`);
     });
 
     const existingTokenId = await lookupRefreshTokenId(context, config, {
-      userId: data[userEntityId],
+      userId: `${user[userEntityId]}`,
       refreshToken: data[entity]
     });
 

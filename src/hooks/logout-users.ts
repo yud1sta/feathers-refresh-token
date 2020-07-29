@@ -1,21 +1,29 @@
 import { NotAuthenticated, BadRequest } from '@feathersjs/errors';
 import { Hook, HookContext, Service } from '@feathersjs/feathers';
-import { lookupRefreshToken, loadConfig } from './common';
+import { lookupRefreshTokenId, loadConfig } from './common';
 import Debug from 'debug';
 import { Application } from '../declarations';
 
 const debug = Debug('feathers-refresh-token');
 
+/*
+ * Logout user by deleting the refresh-token, it must be a protected route
+ * params.user must be populated with user entity
+ */
 export const logoutUser = (options = {}) => {
   return async (context: HookContext) => {
-    const { app, type, params, id } = context;
+    const { app, type, method, params } = context;
     const config = loadConfig(app);
-    const { entity, entityId, authService } = config;
+    const { entity, authService, userEntityId } = config;
 
+    if (method !== 'remove') {
+      throw new Error(`logoutUser hook must be used with remove method!`);
+    }
     //refresh Token only valid for before token and called from external
     if (type === 'after') {
       debug('Logout user after delete refresh token', params);
-      // important, have to reset the query or won't be able to find users ID
+
+      // ! important, have to reset the query or won't be able to find users ID
       params.query = {};
       const user = await app.service(authService).remove(null, params);
       debug('Logout user after delete refresh token', user, context.result);
@@ -27,31 +35,27 @@ export const logoutUser = (options = {}) => {
 
     const { query, user } = params;
 
-    debug('Logout hook id and params', id, query, user);
-    if (!query) {
-      throw new Error(`Invalid query strings!`);
+    debug('Logout hook id and params', query, user);
+
+    if (!query || !user[userEntityId]) {
+      throw new Error(`Invalid query strings or user is not authenticated!`);
     }
 
-    // must provide current refreshToken in query and user Id to logout
-    if (!query[entity] || !id) throw new BadRequest(`Bad request`);
+    // ! must provide current refreshToken in query and user Id to logout
+    if (!query[entity]) throw new BadRequest(`Bad request`);
 
-    const existingToken = await lookupRefreshToken(context, {
-      userId: id as string,
+    const existingTokenId = await lookupRefreshTokenId(context, config, {
+      userId: user[userEntityId],
       refreshToken: query[entity]
     });
 
-    debug('Find existing refresh token result', existingToken);
-    if (existingToken) {
-      const { [entityId]: tokenId } = existingToken; // refresh token ID in database
-      if (!tokenId) {
-        throw new Error('Invalid refresh token!');
-      }
-      debug('Deleting token id', tokenId);
+    debug('Find existing refresh token result', existingTokenId);
 
-      // set context ID to refresh token ID to delete it from DB
-      context.id = tokenId;
-      return context;
+    if (existingTokenId === null) {
+      throw new NotAuthenticated();
     }
-    throw new NotAuthenticated();
+    // set context ID to refresh token ID to delete it from DB
+    context.id = existingTokenId;
+    return context;
   };
 };
