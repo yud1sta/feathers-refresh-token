@@ -5,9 +5,9 @@
     "outDir": "./lib",
     "rootDir": "./src",
     "strict": true,
+    "types": ["jest"],
     "esModuleInterop": true
   },
-  "exclude": [
-    "test"
-  ]
+  "include": ["./src/**/*.tsx", "./src/**/*.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts"]
 }

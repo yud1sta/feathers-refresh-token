@@ -6,7 +6,7 @@ import {
 } from '@feathersjs/authentication';
 import { LocalStrategy } from '@feathersjs/authentication-local';
 import { expressOauth } from '@feathersjs/authentication-oauth';
-import { issueRefreshToken } from '@jackywxd/feathers-refresh-token';
+import { issueRefreshToken } from '../../../lib';
 
 import { Application } from './declarations';
 

@@ -1,5 +1,9 @@
 import * as authentication from '@feathersjs/authentication';
-import { refreshAccessToken, logoutUser } from '../../../../../lib';
+import {
+  refreshAccessToken,
+  revokeRefreshToken,
+  logoutUser
+} from '../../../../../lib';
 // Don't remove this comment. It's needed to format import lines nicely.
 
 const { authenticate } = authentication.hooks;
@@ -11,8 +15,8 @@ export default {
     get: [],
     create: [refreshAccessToken()],
     update: [],
-    patch: [],
-    remove: [authenticate('jwt'), logoutUser()],
+    patch: [authenticate('jwt'), revokeRefreshToken()],
+    remove: [authenticate('jwt'), logoutUser()]
   },
 
   after: {
@@ -22,7 +26,7 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [logoutUser()],
+    remove: [logoutUser()]
   },
 
   error: {
@@ -32,6 +36,6 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [],
-  },
+    remove: []
+  }
 };

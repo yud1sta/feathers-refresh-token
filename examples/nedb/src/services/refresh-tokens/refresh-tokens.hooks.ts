@@ -2,7 +2,8 @@ import * as authentication from '@feathersjs/authentication';
 
 import {
   refreshAccessToken,
-  logoutUser,
+  revokeRefreshToken,
+  logoutUser
 } from '@jackywxd/feathers-refresh-token';
 // Don't remove this comment. It's needed to format import lines nicely.
 
@@ -15,8 +16,8 @@ export default {
     get: [],
     create: [refreshAccessToken()],
     update: [],
-    patch: [],
-    remove: [authenticate('jwt'), logoutUser()],
+    patch: [authenticate('jwt'), revokeRefreshToken()],
+    remove: [authenticate('jwt'), logoutUser()]
   },
 
   after: {
@@ -26,7 +27,7 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [logoutUser()],
+    remove: [logoutUser()]
   },
 
   error: {
@@ -36,6 +37,6 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [],
-  },
+    remove: []
+  }
 };

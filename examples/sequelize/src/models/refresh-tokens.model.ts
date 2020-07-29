@@ -10,27 +10,35 @@ export default function (app: Application) {
     {
       userId: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
       },
       refreshToken: {
         type: DataTypes.TEXT,
-        allowNull: false,
-      },
-      deviceId: {
-        type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false
       },
       isValid: {
         type: DataTypes.BOOLEAN,
-        allowNull: false,
+        allowNull: false
       },
+      deviceId: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      expiredAt: {
+        type: DataTypes.BIGINT,
+        allowNull: true
+      },
+      location: {
+        type: DataTypes.STRING,
+        allowNull: true
+      }
     },
     {
       hooks: {
         beforeCount(options: any) {
           options.raw = true;
-        },
-      },
+        }
+      }
     }
   );
 
