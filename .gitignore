@@ -4,3 +4,4 @@ data/
 pgdata/
 .vscode
 .DS*
+.nyc_output
