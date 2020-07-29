@@ -2,28 +2,21 @@ import { HookContext } from '@feathersjs/feathers';
 import { lookupRefreshToken, loadConfig } from './common';
 import Debug from 'debug';
 import { Application } from '../declarations';
+import { RefreshTokenData } from './core';
 
 const debug = Debug('feathers-refresh-token');
 
 // After hook with authentication service
 // result - authResult which will return to user, contains access token, sub and strategy
 
-/*
- service - refresh token service
- entity - entity name of refresh token service
- options - refresh token JWT options
- userIdField - user ID filed in database, i.e. subject field in JWT, used to look up refresh token
-*/
-
 export const issueRefreshToken = (options = {}) => {
   return async (context: HookContext) => {
-    const { app, result } = context;
+    const { app, data, result, method } = context;
     const config = loadConfig(app as Application);
 
-    const entityService = app.service(config?.service);
-    if (!entityService) {
+    if (method !== 'create') {
       throw new Error(
-        `The refresh-token option is not set in the refresh-token authentication configuration`
+        'refreshAccessToken hook must be used with create method!'
       );
     }
 
@@ -31,13 +24,15 @@ export const issueRefreshToken = (options = {}) => {
 
     const {
       entity,
+      service,
       userEntity,
       userEntityId,
       authService,
       jwtOptions,
       secret
     } = config;
-    let userId;
+
+    let userId: string;
     let user = result[userEntity];
 
     if (user) {
@@ -47,34 +42,52 @@ export const issueRefreshToken = (options = {}) => {
     } else {
       // userIdField must be presented in result
       debug(`${userEntityId} doesn't exist in auth result`, result);
-      return context;
+      throw new Error(`Could not find userId`);
     }
 
-    const existingToken = await lookupRefreshToken(context, { userId });
+    // ! get the deviceId from client
+    const { deviceId } = data;
+    let query: Partial<RefreshTokenData> = {
+      userId
+    };
+    if (deviceId) {
+      query = { ...query, deviceId };
+    }
+    const existingToken = await lookupRefreshToken(context, config, query);
 
     debug(`existing token`, existingToken);
 
-    // if refresh token already exists, simply return
+    // ! if refresh token already exists, simply return
     if (existingToken) {
       Object.assign(result, { [entity]: existingToken['refreshToken'] });
       return context;
     }
 
+    // ! no refresh-token created yet, need to generate a new refresh-token for this login
     // Use authentication service to generate the refresh token with user ID
     const refreshToken = await app.service(authService).createAccessToken(
       {
-        sub: userId
+        sub: `${userId}` // refresh token subject is set to user ID
       },
       jwtOptions, // refresh token options
       secret // refresh token secret, should be different than access token
     );
 
-    // save the refresh token ID
-    const token = await entityService.create({
+    let refreshTokenData: RefreshTokenData = {
       refreshToken,
-      userId,
+      userId: `${userId}`,
       isValid: true
-    });
+    };
+
+    // ! get the deviceId from client
+    if (data?.deviceId) {
+      refreshTokenData = {
+        ...refreshTokenData,
+        deviceId: data.deviceId
+      };
+    }
+    // save the refresh token ID
+    const token = await app.service(service).create(refreshTokenData);
 
     debug(`Token ID and refresh token`, token, refreshToken);
 
