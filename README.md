@@ -3,9 +3,10 @@
 Forked from [TheSinding/authentication-refresh-token](https://github.com/TheSinding/authentication-refresh-token)
 There are three major differences of my implementation:
 
-1. Implement refresh token via Feathers standalone service instead of as Feathers authentication strategy,
+1. Implement refresh token via Feathers standalone service
 2. The form of refresh token is actual JWT
 3. Support all authentication strategies (local, oAuth)
+4. Support multi-devices login
 
 ## Key features
 
@@ -13,11 +14,12 @@ Leveraging existing Feathers built-in authentication service and JWT support to 
 
 1. issueRefreshToken - issuing refresh token after user authenticated successfully and save it via custom refresh-tokens service
 2. refreshAccessToken - issuing new access token by making a POST request to /refresh-tokens endpoint along with user Id and a valid refresh token
-3. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
+3. revokeRefreshToken - revoke refresh token by making PATCH request to /refresh-tokens endpoint
+4. logoutUser - remove the refresh token by making a DELETE request to /refresh-tokens endpoint
 
 ### This is still new, use with caution
 
-****
+---
 
 ## How to use it
 
@@ -26,17 +28,17 @@ Leveraging existing Feathers built-in authentication service and JWT support to 
 3. Import feathers-refresh-token
 4. Add a custom service (`feathers generate service`)
 5. Add refresh-token config in default.json
-7. Add hooks to authentication service and customer service created on step 4
+6. Add hooks to authentication service and customer service created on step 4
 
 ### Import this package to your Feathers App project
 
-`npm install @jackywxd/feathers-refresh-token` 
+`npm install @jackywxd/feathers-refresh-token`
 or
 `yarn add @jackywxd/feathers-refresh-token`
 
 ### Add 'refresh-token' config section in default.json under authentication section. Basically it mirrors the settings of authentication. It is suggested that change access token expiresIn to 15m
 
-- entity: the refresh token entity name,
+- entity: the refresh token entity name
 - service: the refresh token service name
 - secret: secret of refresh token JWT, should be different than access token's secret
 - jwtOptions: refresh token JWT options
@@ -44,7 +46,6 @@ or
 ```json
   "authentication": {
     "entity": "user",
-    "entityId": "_id",
     "service": "users",
     "secret": "Mor17jj93SV4Q26GvivuvOySqA0=",
     "authStrategies": ["jwt", "local"],
@@ -59,7 +60,6 @@ or
     },
     "refresh-token": {
       "entity": "refreshToken",
-      "entityId": "_id",
       "service": "refresh-tokens",
       "secret": "oQQjDiCO/Okmm/AUMN7aqKXod+M=asdfasdfasdf99kdsl)(&&3mc,",
       "jwtOptions": {
@@ -74,13 +74,12 @@ or
     },
 ```
 
-### If "refresh-token" config section is missing in default.json file, the default refresh-token options will be used as below.
+### If "refresh-token" config section is missing in default.json file, the default refresh-token options will be used as below
 
 ```typescript
 export const defaultOptions = {
   service: 'refresh-tokens', // refresh-token service name
   entity: 'refreshToken', // refresh-token entity
-  entityId: 'id', // refresh-token entity Id
   secret: 'supersecret', // secret for Refresh token
   jwtOptions: {
     header: {
@@ -116,7 +115,7 @@ declare module '../../declarations' {
 export default function (app: Application) {
   const options = {
     Model: createModel(app),
-    paginate: app.get('paginate'),
+    paginate: app.get('paginate')
   };
 
   // Initialize our service with any options it requires
@@ -133,14 +132,15 @@ export default function (app: Application) {
 
 ```typescript
 export type RefreshTokenData = {
-  id: string; // id filed for refresh token
-  _id: string;
+  id?: string; // id filed for refresh token
+  _id?: string;
   userId: string; // user Id
   refreshToken: string; // refresh token
   isValid: boolean; // refresh token is valid or not
-  deviceId: string; // user login device Id, provied by client
-  location: string; // user login location, provided by client
-  loginTime: string; // user login timeStamp
+  deviceId?: string; // user login device Id, provied by client
+  location?: string; // user login location, provided by client
+  createdAt?: string; // user login time (refresh-tokenn creation time)
+  updatedAt?: string;
 };
 ```
 
@@ -158,11 +158,11 @@ export default function (app: Application) {
       userId: { type: String, required: true },
       refreshToken: { type: String, required: true },
       isValid: { type: Boolean, required: true }, // refresh token is valid or not
-      deviceId: String,
+      deviceId: String
     },
     {
       validateBeforeSave: false,
-      timestamps: true,
+      timestamps: true
     }
   );
 
@@ -190,27 +190,27 @@ export default function (app: Application) {
     {
       userId: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
       },
       refreshToken: {
         type: DataTypes.TEXT,
-        allowNull: false,
+        allowNull: false
       },
       deviceId: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: true
       },
       isValid: {
         type: DataTypes.BOOLEAN,
-        allowNull: false,
-      },
+        allowNull: false
+      }
     },
     {
       hooks: {
         beforeCount(options: any) {
           options.raw = true;
-        },
-      },
+        }
+      }
     }
   );
 
@@ -238,14 +238,14 @@ export default function (app: Application) {
   app.use('/authentication', authentication);
   app.service('authentication').hooks({
     after: {
-      create: [issueRefreshToken()],
-    },
+      create: [issueRefreshToken()]
+    }
   });
   app.configure(expressOauth());
 }
 ```
 
-### Update refresh-tokens.hooks.ts to add refreshAccessToken to before/create hook, add logoutUser to before/remove hook and after/remove hook
+### Update refresh-tokens.hooks.ts to add refreshAccessToken, revokeRefreshToken and logoutUser hooks
 
 refresh-tokens.hooks.ts
 
@@ -257,8 +257,8 @@ export default {
     get: [],
     create: [refreshAccessToken()],
     update: [],
-    patch: [],
-    remove: [authenticate('jwt'), logoutUser()],
+    patch: [authenticate('jwt'), revokeRefreshToken()],
+    remove: [authenticate('jwt'), logoutUser()]
   },
 
   after: {
@@ -268,7 +268,7 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [logoutUser()],
+    remove: [logoutUser()]
   },
 
   error: {
@@ -278,14 +278,30 @@ export default {
     create: [],
     update: [],
     patch: [],
-    remove: [],
-  },
+    remove: []
+  }
 };
 ```
 
 ## Examples
 
-### Authenticate user Authentication response, client needs to save the user Id and refresh token for future use.
+### Authenticate user with local or oAuth strategies, to support multi-devices login, client must provide "deviceId" in authentication request. After authenticated successfully, client must save the user Id and refresh token in secure local storage for future use
+
+Authentication request:
+
+```http
+POST http://localhost:3030/authentication
+Content-Type: application/json
+
+{
+  "strategy": "local",
+  "email": "test@test.com",
+  "password": "a",
+  "deviceId": "device1"
+}
+```
+
+Authentication response:
 
 ```http
 HTTP/1.1 201 Created
@@ -311,7 +327,7 @@ Content-Type: application/json
 
 {
   "_id": "user ID",
-  "refreshToken": "...JWT token..."
+  "refreshToken": <refresh_token>
 }
 ```
 
@@ -320,32 +336,34 @@ response:
 ```http
 HTTP/1.1 201 Created
 {
-  "refreshToken": "same refresh token",
-  "_id": "same user Id",
-  "accessToken": "new access token"
+  "accessToken": "new access_token"
 }
 
 ```
 
-### To logout user, client makes a DELETE request to /refresh-tokens/userID endpoint. Unlike POST request, DELETE request is protected, client needs to set the Authorization header to access it
+### To revoke refresh-token, make a PATCH request to /refresh-tokens endpoint. Authorization header should be set as it is required a protected endpoint
 
 ```http
-DELETE http://localhost:3030/refresh-tokens/<user ID>?refreshToken=<refresh token>
-Authorization:<access token>
-```
+PATCH http://localhost:3030/refresh-tokens
+Content-Type: application/json
+Authorization: <access_token>
 
-Response:
-
-```http
-HTTP/1.1 200 OK
 {
-"status": "Logout successfully"
+  "refreshToken": <refresh_token>
 }
+```
+
+### To logout user, client makes a DELETE request to /refresh-tokens/userID endpoint. Same as revokeRefreshToken, DELETE request is protected, client needs to set the Authorization header to access it
+
+```http
+DELETE http://localhost:3030/refresh-tokens?refreshToken=<refresh_token>
+Authorization: <access_token>
 ```
 
 ## Change-log
 
 ```text
+0.2.0 - Add revokeRefreshToken hook, unit testing, support deviceId for multiple device login and update utility funtions
 0.1.0 - Simply and align refresh-token config options with existing authentication options; update typescript typing
 0.0.6 - initial release
 ```

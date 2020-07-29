@@ -1,7 +1,7 @@
 {
   "name": "@jackywxd/feathers-refresh-token",
   "description": "Refresh token hooks for @feathers/authentication",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "homepage": "https://github.com/jackywxd/feathers-refresh-token#readme",
   "main": "lib/",
   "types": "lib/",
