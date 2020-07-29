@@ -58,20 +58,63 @@ export const loadConfig = (app: Application) => {
  *
  * Return an existing refresh-token
  * context: Hook context
+ * config: Refresh-token config options
+ * params: query conditions
+ */
+export const lookupRefreshTokenId = async (
+  context: HookContext,
+  config: RefreshTokenOptions,
+  params: Partial<RefreshTokenData>
+): Promise<string | null> => {
+  const { existingToken } = await lookupRefreshToken(context, config, params);
+
+  if (!existingToken) {
+    return null;
+  }
+
+  debug('Find existing refresh token result', existingToken);
+
+  const { entityId, service } = config;
+  // ! this is refresh token ID in database, not user ID
+  const tokenEntityId: 'id' | '_id' = entityId
+    ? entityId
+    : context.app.service(service).id;
+
+  debug(`tokenEntityId: ${tokenEntityId}`);
+
+  const { [tokenEntityId]: tokenId } = existingToken;
+
+  // tokenId could be 0
+  if (tokenId === null || tokenId === undefined) {
+    throw new Error('Invalid refresh token!');
+  }
+  debug('refresh-token Id', tokenId);
+
+  // set context ID to refresh token ID to delete it from DB
+  return tokenId;
+};
+
+/*
+ *
+ * Return an valid existing refresh-token
+ * context: Hook context
+ * config: Refresh-token config options
  * params: query conditions
  */
 export const lookupRefreshToken = async (
   context: HookContext,
+  config: RefreshTokenOptions,
   params: Partial<RefreshTokenData>
-): Promise<RefreshTokenData | null> => {
+): Promise<{ existingToken: RefreshTokenData | null; verifyResult: any }> => {
   const { app } = context;
-  const config = loadConfig(app);
 
   const { userId, deviceId, isValid, refreshToken } = params;
 
   if (!userId) {
     throw new Error(`userId is mandatory for querying refresh-token`);
   }
+
+  const { service, authService, jwtOptions, secret } = config;
 
   let query: Partial<RefreshTokenData> = {
     userId: `${userId}`,
@@ -91,27 +134,34 @@ export const lookupRefreshToken = async (
       deviceId
     };
   }
-  const existingToken = await app.service(config.service).find({
+  const existingToken = await app.service(service).find({
     query
   });
-
   debug(`Refresh token lookup result: `, existingToken);
 
+  let data: RefreshTokenData | null = null;
   if (Array.isArray(existingToken) && existingToken.length > 0) {
-    return existingToken[0];
+    data = existingToken[0];
+  } else if (existingToken && existingToken.total > 0 && existingToken.data) {
+    data = existingToken.data[0];
+  } else {
+    data = existingToken;
   }
 
-  if (existingToken && existingToken.total > 0 && existingToken.data) {
-    const data: RefreshTokenData = existingToken.data[0];
-    // get expiration time from database
-    const { expiredAt } = data;
-    debug(`expiredAt`, +expiredAt!);
-    // make sure refresh token is not expired
-    if (expiredAt && new Date().getTime() > +expiredAt) {
-      throw new Error(`Invalid refresh token!`);
-    }
-    return data;
+  if (!data || !data.refreshToken) {
+    return { existingToken: null, verifyResult: null };
   }
 
-  return null;
+  // ! verify refresh-token before returning
+  const verifyResult = await app.service(authService).verifyAccessToken(
+    data.refreshToken,
+    jwtOptions, // refresh token options
+    secret // refresh token secret, should be different than access token
+  );
+
+  if (!verifyResult) {
+    throw new Error('Invalid refresh-token!');
+  }
+
+  return { existingToken: data, verifyResult };
 };

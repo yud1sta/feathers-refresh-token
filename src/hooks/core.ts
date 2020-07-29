@@ -34,10 +34,10 @@ export type RefreshTokenData = {
   userId: string; // user Id
   refreshToken: string; // refresh token
   isValid: boolean; // refresh token is valid or not
-  expiredAt?: number; // expiration date of refresh token
   deviceId?: string; // user login device Id, provied by client
   location?: string; // user login location, provided by client
-  loginTime?: string; // user login timeStamp
+  createdAt?: string; // user login time (refresh-tokenn creation time)
+  updatedAt?: string;
 };
 
 export type RefreshTokenOptions = typeof defaultOptions &
