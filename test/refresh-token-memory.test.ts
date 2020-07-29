@@ -128,8 +128,6 @@ describe('refresh-token-hooks', () => {
         deviceId: 'device2'
       });
 
-      params = { ...result, provider: 'rest' };
-
       const refreshTokenSettings =
         service.configuration['refresh-token'].jwtOptions;
       const refreshTokenDecoded = jwt.decode(result.refreshToken);
@@ -197,8 +195,6 @@ describe('refresh-token-hooks', () => {
         throw new Error('Unexpected decoded refresh-token JWT type');
       }
 
-      const tokens = await app.service('refresh-tokens').find();
-      console.log(tokens);
       assert.ok(result.refreshToken);
       assert.strictEqual(result.user.id, userId);
       assert.notStrictEqual(result.refreshToken, refreshToken);
@@ -240,7 +236,6 @@ describe('refresh-token-hooks', () => {
         const result = await app.service('refresh-tokens').patch(
           null,
           {
-            id: userId,
             refreshToken: 'somevalue'
           },
           params
@@ -255,7 +250,6 @@ describe('refresh-token-hooks', () => {
       const authResult = await app.service('refresh-tokens').patch(
         null,
         {
-          id: userId,
           refreshToken
         },
         params

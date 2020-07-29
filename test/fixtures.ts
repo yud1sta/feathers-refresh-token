@@ -29,7 +29,10 @@ export class Strategy1 extends AuthenticationBaseStrategy {
     }
     if (authentication.username === 'Jacky' || authentication.both) {
       return {
-        id: 456,
+        user: {
+          id: 456,
+          name: 'Jacky Wu'
+        },
         authenticated: true
       };
     }
