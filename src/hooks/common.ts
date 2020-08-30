@@ -10,9 +10,10 @@ let refreshTokenOptions: RefreshTokenOptions | null = null;
  */
 export const loadConfig = (app: Application) => {
   // refresn token options already loaded, simply return
-  if (refreshTokenOptions) {
-    return refreshTokenOptions;
-  }
+  // comment this because can't use multiple table auth , user and admin
+  // if (refreshTokenOptions) {
+  //   return refreshTokenOptions;
+  // }
   // get default authentication key
   const defaultAuthKey = app.get('defaultAuthentication');
   const {
